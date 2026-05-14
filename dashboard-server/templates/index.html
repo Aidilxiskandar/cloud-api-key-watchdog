@@ -464,12 +464,13 @@
                         <th>Timestamp</th>
                         <th>File</th>
                         <th>Detection Method</th>
+                        <th>Severity</th>
                         <th>Status</th>
                         <th>Findings</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="5" class="state-cell"><div class="ico">⏳</div><p>Loading…</p></td></tr>
+                    <tr><td colspan="6" class="state-cell"><div class="ico">⏳</div><p>Loading…</p></td></tr>
                 </tbody>
             </table>
         </div>
@@ -490,6 +491,38 @@
             return `<span class="badge badge-bypassed">⚠ BYPASSED</span>`;
         }
         return `<span class="badge badge-blocked">🛡 BLOCKED</span>`;
+    }
+
+    const _SEV_HIGH   = new Set(['AWS Access Key','AWS Secret Key','GitHub Token','Private Key','Stripe Key','Slack Token']);
+    const _SEV_MEDIUM = new Set(['Google API Key','Google OAuth Client ID','Google OAuth Client']);
+    const _SEV_LOW    = new Set(['Generic API Key']);
+
+    function getHighestSeverity(d) {
+        const findings = d.findings || [];
+        if (!findings.length) return null;
+        const sevOrder = ['High','Medium','Low','Entropy'];
+        let highest = 'Entropy';
+        for (const f of findings) {
+            const method = (f.detectionMethod || '').replace('Regex (','').replace(')','');
+            let s = 'Low';
+            if (_SEV_HIGH.has(method))        s = 'High';
+            else if (_SEV_MEDIUM.has(method)) s = 'Medium';
+            else if (method === 'High Entropy Detection') s = 'Entropy';
+            if (sevOrder.indexOf(s) < sevOrder.indexOf(highest)) highest = s;
+        }
+        return highest;
+    }
+
+    function renderSeverity(d) {
+        const s = getHighestSeverity(d);
+        if (!s) return '<span style="color:var(--muted);font-size:12px;">—</span>';
+        const styles = {
+            High:    'background:#3d0c0c;color:#f85149;border-color:#f8514944;',
+            Medium:  'background:#3d2b00;color:#e3b341;border-color:#e3b34144;',
+            Low:     'background:#1f3a5f;color:#388bfd;border-color:#1f6feb44;',
+            Entropy: 'background:#2d1f4e;color:#a371f7;border-color:#a371f744;',
+        };
+        return `<span class="badge" style="${styles[s] || ''}">${s}</span>`;
     }
 
     function renderDetectionMethod(d) {
@@ -666,7 +699,7 @@
             /* Table */
             const tbody = document.getElementById('tableBody');
             if (!detections.length) {
-                tbody.innerHTML = `<tr><td colspan="5" class="state-cell">
+                tbody.innerHTML = `<tr><td colspan="6" class="state-cell">
                     <div class="ico">🔍</div><p>No detections yet — start coding!</p></td></tr>`;
                 return;
             }
@@ -678,6 +711,7 @@
                     <td class="ts">${escapeHtml(d.timestamp || 'N/A')}</td>
                     <td><span class="filepath">${escapeHtml(d.filename || 'N/A')}</span></td>
                     <td class="method-cell">${renderDetectionMethod(d)}</td>
+                    <td>${renderSeverity(d)}</td>
                     <td>${renderStatus(d.status)}</td>
                     <td class="findings-cell">${renderFindings(d, i)}</td>
                 </tr>`).join('');
@@ -688,7 +722,7 @@
         } catch (err) {
             console.error('fetchAllData error:', err);
             document.getElementById('tableBody').innerHTML =
-                `<tr><td colspan="5" class="state-cell" style="color:var(--red);">
+                `<tr><td colspan="6" class="state-cell" style="color:var(--red);">
                     <div class="ico">⚠</div><p>Error loading data — check the console.</p></td></tr>`;
         }
     }
