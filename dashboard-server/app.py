@@ -276,16 +276,18 @@ def get_stats():
 
     df = pd.DataFrame(detections)
 
-    # Convert timestamp to datetime
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    # Handle missing timestamp column (records logged before timestamp was required)
+    if 'timestamp' not in df.columns:
+        df['timestamp'] = pd.NaT
+    else:
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
 
-    # Daily counts keyed as "YYYY-MM-DD" strings
-    daily_counts = df.groupby(df['timestamp'].dt.date).size().to_dict()
+    # Daily counts — drop rows where timestamp couldn't be parsed
+    valid_ts = df.dropna(subset=['timestamp'])
+    daily_counts = valid_ts.groupby(valid_ts['timestamp'].dt.date).size().to_dict()
     daily_counts_str_keys = {str(k): v for k, v in daily_counts.items()}
 
     # Aggregate detection methods from the findings array in each record.
-    # The top-level detection_method is a summary string ("Multiple (40 threats)")
-    # so we drill into findings for accurate per-pattern counts.
     method_counts = {}
     for det in detections:
         findings_list = det.get('findings') or []
@@ -295,25 +297,24 @@ def get_stats():
                 if 'Entropy' in method:
                     key = 'High Entropy'
                 elif method.startswith('Regex (') and method.endswith(')'):
-                    key = method[7:-1]   # "AWS Access Key" from "Regex (AWS Access Key)"
+                    key = method[7:-1]
                 else:
                     key = method
                 method_counts[key] = method_counts.get(key, 0) + 1
         else:
-            # Fallback for records saved before findings array was added
             key = det.get('detection_method', 'Unknown')
             method_counts[key] = method_counts.get(key, 0) + 1
 
-    # Timestamps back to strings before to_dict so pandas Timestamps serialise cleanly
-    recent_df = df.sort_values('timestamp', ascending=False).head(10).copy()
-    recent_df['timestamp'] = recent_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    # Recent records — sort by timestamp, handle NaT gracefully
+    recent_df = df.sort_values('timestamp', ascending=False, na_position='last').head(10).copy()
+    recent_df['timestamp'] = recent_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S').fillna('')
 
     stats = {
         'total': len(df),
         'by_method': method_counts,
-        'by_status': df['status'].value_counts().to_dict(),
+        'by_status': df['status'].value_counts().to_dict() if 'status' in df.columns else {},
         'daily_counts': daily_counts_str_keys,
-        'unique_files': df['filename'].nunique(),
+        'unique_files': df['filename'].nunique() if 'filename' in df.columns else 0,
         'recent': recent_df.to_dict('records')
     }
     return jsonify(stats)
