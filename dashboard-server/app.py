@@ -176,6 +176,22 @@ def _scan_text(content, filename):
 app = Flask(__name__)
 CORS(app)
 
+# ── Security hardening ──────────────────────────────────────────────────────
+# Max request body size: 1 MB — prevents oversized payload DoS
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
+
+# API key for write/clear operations (set WATCHDOG_API_KEY env var on Railway)
+_API_KEY = os.environ.get('WATCHDOG_API_KEY', '')
+
+def _check_api_key():
+    """Return 401 response if API key is configured and not matched."""
+    if not _API_KEY:
+        return None  # API key not configured — allow (backward compat)
+    provided = request.headers.get('X-API-Key', '')
+    if provided != _API_KEY:
+        return jsonify({'error': 'Unauthorized — invalid or missing X-API-Key'}), 401
+    return None
+
 DATA_FILE = os.path.join(os.path.dirname(__file__), "detections.json")
 
 def load_detections(machine_id=None):
@@ -196,32 +212,27 @@ def save_detection(detection):
 # ------------------- API Endpoint for VS Code Extension -------------------
 @app.route('/api/log', methods=['POST'])
 def log_detection():
-    """
-    Receive detection log from VS Code extension.
-    Expected JSON payload:
-    {
-        "filename": "config/database.py",
-        "detected_key": "AKIAIOSFODNN7EXAMPLE",
-        "detection_method": "Regex (AWS)",
-        "entropy_score": 0.0,
-        "timestamp": "2024-05-20 14:30:05",
-        "status": "BLOCKED"
-    }
-    """
+    # Require API key for write operations
+    err = _check_api_key()
+    if err: return err
+
     try:
         data = request.json
         if not data:
             return jsonify({"error": "No JSON payload"}), 400
 
-        # Log to console (for debugging)
-        print(f"\n🔒 SECURITY DETECTION RECEIVED:")
-        print(f"   File: {data.get('filename')}")
-        print(f"   Method: {data.get('detection_method')}")
-        print(f"   Key: {data.get('detected_key')}")
-        print(f"   Time: {data.get('timestamp')}")
-        print(f"   Status: {data.get('status')}\n")
+        # Validate required fields
+        required = ['filename', 'status']
+        missing = [f for f in required if not data.get(f)]
+        if missing:
+            return jsonify({"error": f"Missing required fields: {missing}"}), 400
 
-        # Save to file
+        # Sanitise string fields — strip tags and limit length
+        for field in ['filename', 'detected_key', 'detection_method', 'status']:
+            if field in data and isinstance(data[field], str):
+                data[field] = data[field][:500]
+
+        print(f"[log] {data.get('status')} — {data.get('filename')}")
         save_detection(data)
 
         return jsonify({"status": "success", "message": "Detection logged"}), 200
@@ -309,9 +320,19 @@ def get_stats():
 
 @app.route('/api/clear', methods=['POST'])
 def clear_detections():
-    """Clear all detections (for testing)."""
-    with open(DATA_FILE, 'w') as f:
-        json.dump([], f)
+    # Require API key — prevents anyone from wiping detection logs
+    err = _check_api_key()
+    if err: return err
+    machine_id = request.args.get('machine_id')
+    if machine_id:
+        # Only clear this user's detections
+        all_det = load_detections()
+        remaining = [d for d in all_det if d.get('machine_id') != machine_id]
+        with open(DATA_FILE, 'w') as f:
+            json.dump(remaining, f, indent=2)
+    else:
+        with open(DATA_FILE, 'w') as f:
+            json.dump([], f)
     return jsonify({"status": "cleared"})
 
 # ─── Manual Scanner ─────────────────────────────────────────────────────────
