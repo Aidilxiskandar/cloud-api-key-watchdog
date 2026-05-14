@@ -1,0 +1,136 @@
+<svg width="620" height="700" xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif">
+
+  <!-- Background -->
+  <rect width="620" height="700" fill="#0d1117" rx="14"/>
+  <rect x="2" y="2" width="616" height="696" fill="none" stroke="#30363d" stroke-width="1.5" rx="13"/>
+
+  <!-- Title -->
+  <text x="310" y="42" text-anchor="middle" font-size="19" font-weight="bold" fill="#e6edf3" letter-spacing="0.5">Prototype Security Distribution</text>
+
+  <!--
+    Centre: (310, 360)  Outer R: 165  Inner R: 72
+    Angles (clockwise from 12 o'clock = -90°):
+      Seg1 Secret Detection   28%  100.8°  -90.0 → 10.8
+      Seg2 Save-Time Protect  22%   79.2°   10.8 → 90.0
+      Seg3 Monitoring/Alert   20%   72.0°   90.0 → 162.0
+      Seg4 Manual Scanner     18%   64.8°  162.0 → 226.8
+      Seg5 Security Hardening 12%   43.2°  226.8 → 270.0
+
+    Pre-computed outer-circle points (R=165):
+      -90.0° → (310,  195)
+       10.8° → (472.1, 390.9)
+       90.0° → (310,  525)
+      162.0° → (153.0, 411.0)
+      226.8° → (197.5, 239.3)
+
+    Pre-computed inner-circle points (r=72):
+      -90.0° → (310,  288)
+       10.8° → (380.8, 373.5)
+       90.0° → (310,  432)
+      162.0° → (241.6, 382.3)
+      226.8° → (261.1, 307.3)
+  -->
+
+  <!-- ── Seg 1: Secret Detection  28%  teal ── -->
+  <path d="M 310 195
+           A 165 165 0 0 1 472.1 390.9
+           L 380.8 373.5
+           A 72  72  0 0 0 310 288 Z"
+        fill="#00897b" stroke="#0d1117" stroke-width="4"/>
+
+  <!-- ── Seg 2: Save-Time Protection  22%  blue ── -->
+  <path d="M 472.1 390.9
+           A 165 165 0 0 1 310 525
+           L 310 432
+           A 72  72  0 0 0 380.8 373.5 Z"
+        fill="#1565c0" stroke="#0d1117" stroke-width="4"/>
+
+  <!-- ── Seg 3: Monitoring & Alerting  20%  orange ── -->
+  <path d="M 310 525
+           A 165 165 0 0 1 153.0 411.0
+           L 241.6 382.3
+           A 72  72  0 0 0 310 432 Z"
+        fill="#e65100" stroke="#0d1117" stroke-width="4"/>
+
+  <!-- ── Seg 4: Manual Scanner  18%  red ── -->
+  <path d="M 153.0 411.0
+           A 165 165 0 0 1 197.5 239.3
+           L 261.1 307.3
+           A 72  72  0 0 0 241.6 382.3 Z"
+        fill="#b71c1c" stroke="#0d1117" stroke-width="4"/>
+
+  <!-- ── Seg 5: Security Hardening  12%  purple ── -->
+  <path d="M 197.5 239.3
+           A 165 165 0 0 1 310 195
+           L 310 288
+           A 72  72  0 0 0 261.1 307.3 Z"
+        fill="#6a1b9a" stroke="#0d1117" stroke-width="4"/>
+
+  <!-- ── Centre hole ── -->
+  <circle cx="310" cy="360" r="66" fill="#0d1117"/>
+  <circle cx="310" cy="360" r="63" fill="none" stroke="#30363d" stroke-width="1.5"/>
+  <text x="310" y="352" text-anchor="middle" font-size="11" fill="#8b949e">Cloud API</text>
+  <text x="310" y="366" text-anchor="middle" font-size="11" fill="#8b949e">Key</text>
+  <text x="310" y="380" text-anchor="middle" font-size="11" fill="#8b949e">Watchdog</text>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       LABELS  (mid-angle radius ≈ 118)
+       Seg1 mid −39.6°  → (310+118×0.7705, 360−118×0.6374) = (401,  285)
+       Seg2 mid  50.4°  → (310+118×0.6374, 360+118×0.7705) = (385,  451)
+       Seg3 mid 126.0°  → (310−118×0.5878, 360+118×0.8090) = (241,  455)
+       Seg4 mid 194.4°  → (310−118×0.9686, 360−118×0.2487) = (196,  331)
+       Seg5 mid 248.4°  → (310−118×0.3681, 360−118×0.9298) = (267,  250)
+  ══════════════════════════════════════════════════════════════ -->
+
+  <!-- Seg 1 label -->
+  <text x="401" y="270" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Secret</text>
+  <text x="401" y="285" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Detection</text>
+  <text x="401" y="305" text-anchor="middle" font-size="18" font-weight="bold" fill="white">28%</text>
+  <text x="401" y="320" text-anchor="middle" font-size="9"  fill="#b2dfdb">Regex + Entropy</text>
+
+  <!-- Seg 2 label -->
+  <text x="388" y="436" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Save-Time</text>
+  <text x="388" y="451" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Protection</text>
+  <text x="388" y="471" text-anchor="middle" font-size="18" font-weight="bold" fill="white">22%</text>
+  <text x="388" y="486" text-anchor="middle" font-size="9"  fill="#90caf9">Block Save</text>
+
+  <!-- Seg 3 label -->
+  <text x="235" y="440" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Monitoring</text>
+  <text x="235" y="455" text-anchor="middle" font-size="13" font-weight="bold" fill="white">&amp; Alerting</text>
+  <text x="235" y="475" text-anchor="middle" font-size="18" font-weight="bold" fill="white">20%</text>
+  <text x="235" y="490" text-anchor="middle" font-size="9"  fill="#ffcc80">Dashboard</text>
+
+  <!-- Seg 4 label -->
+  <text x="198" y="316" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Manual</text>
+  <text x="198" y="331" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Scanner</text>
+  <text x="198" y="351" text-anchor="middle" font-size="18" font-weight="bold" fill="white">18%</text>
+  <text x="198" y="366" text-anchor="middle" font-size="9"  fill="#ef9a9a">GitHub API</text>
+
+  <!-- Seg 5 label -->
+  <text x="262" y="236" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Security</text>
+  <text x="262" y="251" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Hardening</text>
+  <text x="262" y="271" text-anchor="middle" font-size="18" font-weight="bold" fill="white">12%</text>
+  <text x="262" y="286" text-anchor="middle" font-size="9"  fill="#ce93d8">Bandit · CORS</text>
+
+  <!-- ── Legend ── -->
+  <rect x="30" y="578" width="560" height="92" fill="#161b22" rx="8" stroke="#30363d" stroke-width="1"/>
+
+  <rect x="48"  y="596" width="14" height="14" fill="#00897b" rx="2"/>
+  <text x="68"  y="608" font-size="11" fill="#e6edf3">Secret Detection</text>
+
+  <rect x="48"  y="618" width="14" height="14" fill="#b71c1c" rx="2"/>
+  <text x="68"  y="630" font-size="11" fill="#e6edf3">Manual Scanner</text>
+
+  <rect x="185" y="596" width="14" height="14" fill="#1565c0" rx="2"/>
+  <text x="205" y="608" font-size="11" fill="#e6edf3">Save-Time Protection</text>
+
+  <rect x="185" y="618" width="14" height="14" fill="#6a1b9a" rx="2"/>
+  <text x="205" y="630" font-size="11" fill="#e6edf3">Security Hardening</text>
+
+  <rect x="370" y="596" width="14" height="14" fill="#e65100" rx="2"/>
+  <text x="390" y="608" font-size="11" fill="#e6edf3">Monitoring &amp; Alerting</text>
+
+  <!-- Caption -->
+  <text x="310" y="686" text-anchor="middle" font-size="12" fill="#8b949e" font-style="italic">Figure 2  Security Distribution</text>
+
+</svg>
