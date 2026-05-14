@@ -129,9 +129,27 @@ async function detectSecretsDetailed(content: string): Promise<DetectionResult> 
         allFindings.push(...detectWithEntropyDetailed(content, entropyThreshold));
     }
 
-    const uniqueFindings = allFindings.filter((f, idx, self) =>
-        idx === self.findIndex(g => g.line === f.line && g.column === f.column && g.matchedText === f.matchedText)
-    );
+    const uniqueFindings = allFindings.filter((f, idx, self) => {
+        // 1. Drop exact duplicates (same line, column and text)
+        if (idx !== self.findIndex(g =>
+            g.line === f.line && g.column === f.column && g.matchedText === f.matchedText
+        )) { return false; }
+
+        // 2. Drop a Generic API Key finding when a more specific pattern on the
+        //    same line already captured the actual key value that is contained
+        //    inside this Generic match (e.g. `apiKey = "AIza..."` vs `AIza...`).
+        if (f.detectionMethod.includes('Generic API Key')) {
+            const coveredBySpecific = self.some((g, gIdx) =>
+                gIdx !== idx &&
+                g.line === f.line &&
+                !g.detectionMethod.includes('Generic API Key') &&
+                f.matchedText.includes(g.matchedText)
+            );
+            if (coveredBySpecific) { return false; }
+        }
+
+        return true;
+    });
 
     if (uniqueFindings.length > 0) {
         const firstFinding = uniqueFindings[0];
@@ -184,9 +202,35 @@ function isFalsePositive(matchedKey: string): boolean {
 
 function isCommonString(str: string): boolean {
     const lowerStr = str.toLowerCase();
-    if (COMMON_STRINGS.some(common => lowerStr.includes(common))) return true;
-    const commonPatterns = [/^[0-9]+$/, /^[A-Za-z]+$/, /^[0-9]+[A-Za-z]+$/, /^[A-Za-z]+[0-9]+$/];
-    return commonPatterns.some(pattern => pattern.test(str));
+
+    // Known common/safe keyword substrings
+    if (COMMON_STRINGS.some(common => lowerStr.includes(common))) { return true; }
+
+    // Real secrets never contain spaces — format strings, sentences, and
+    // code templates (f-strings, template literals) almost always do
+    if (/\s/.test(str)) { return true; }
+
+    // Python / JS template placeholders: {variable}, {obj.attr}, {val:^70}
+    if (/\{[A-Za-z_][^}]*\}/.test(str)) { return true; }
+
+    // strftime / date format codes: %Y, %m, %d, %H, %M, %S …
+    if (/%[YymdHMSfBbAaIpjZz]/.test(str)) { return true; }
+
+    // ANSI / terminal colour names embedded in strings
+    if (/\b(BOLD|CYAN|RED|GREEN|BLUE|YELLOW|RESET|END|UNDERLINE|Colors)\b/i.test(str)) { return true; }
+
+    // Pure character-class strings (no real entropy for secrets)
+    const simplePatterns = [/^[0-9]+$/, /^[A-Za-z]+$/, /^[0-9]+[A-Za-z]+$/, /^[A-Za-z]+[0-9]+$/];
+    if (simplePatterns.some(p => p.test(str))) { return true; }
+
+    // Looks like a file path or URL fragment
+    if (/^(\.{0,2}\/|[A-Za-z]:\\)/.test(str)) { return true; }
+
+    // Mostly punctuation / brackets — code structure, not a secret
+    const punctuationRatio = (str.match(/[^A-Za-z0-9]/g) || []).length / str.length;
+    if (punctuationRatio > 0.4) { return true; }
+
+    return false;
 }
 
 function calculateShannonEntropy(str: string): number {
@@ -248,12 +292,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     // --- Output channel (appears in OUTPUT panel, URLs are Ctrl+Click-able) ---
     outputChannel = vscode.window.createOutputChannel('API Key Watchdog');
-    outputChannel.appendLine('╔══════════════════════════════════════════════╗');
-    outputChannel.appendLine('║        🔒 API Key Watchdog — Active          ║');
-    outputChannel.appendLine('╠══════════════════════════════════════════════╣');
-    outputChannel.appendLine(`║  Dashboard → ${dashboardWithId.substring(0, 31).padEnd(31)}║`);
-    outputChannel.appendLine('║  Ctrl+Click the URL above to open it         ║');
-    outputChannel.appendLine('╚══════════════════════════════════════════════╝');
+    outputChannel.appendLine('🔒 API Key Watchdog — Active');
+    outputChannel.appendLine('─────────────────────────────────────────────');
+    outputChannel.appendLine('Dashboard (Ctrl+Click to open):');
+    outputChannel.appendLine(dashboardWithId);
+    outputChannel.appendLine('─────────────────────────────────────────────');
     outputChannel.appendLine('');
     outputChannel.show(true);
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0] - 2026-05-14
+
+### Changed
+- Dashboard is now cloud-hosted — no local Flask setup required
+- Each user gets a private dashboard view via their unique machine ID
+- Default `dashboardUrl` points to the live Railway deployment
+
 ## [1.0.0] - 2026-05-07
 
 ### Added

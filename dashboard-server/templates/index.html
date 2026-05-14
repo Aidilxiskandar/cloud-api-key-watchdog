@@ -539,12 +539,34 @@
         </div>`;
     }
 
+    // Track which finding rows the user has manually expanded
+    const _expandedRows = new Set();
+
     function toggleFindings(idx, count) {
         const el  = document.getElementById('more-'+idx);
         const btn = el.nextElementSibling;
         const collapsed = el.style.display === 'none';
         el.style.display = collapsed ? 'block' : 'none';
         btn.textContent  = collapsed ? '▲ Show less' : '▼ '+count+' more';
+        if (collapsed) {
+            _expandedRows.add(idx);
+            // Scroll so the first newly visible finding appears at the top
+            // of the viewport rather than being hidden above it
+            setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        } else {
+            _expandedRows.delete(idx);
+        }
+    }
+
+    function restoreExpanded() {
+        _expandedRows.forEach(idx => {
+            const el  = document.getElementById('more-'+idx);
+            const btn = el && el.nextElementSibling;
+            if (el) { el.style.display = 'block'; }
+            if (btn && btn.classList.contains('toggle-btn')) {
+                btn.textContent = '▲ Show less';
+            }
+        });
     }
 
     /* ── Chart layout shared config ── */
@@ -659,6 +681,9 @@
                     <td>${renderStatus(d.status)}</td>
                     <td class="findings-cell">${renderFindings(d, i)}</td>
                 </tr>`).join('');
+
+            // Re-open any rows the user had manually expanded before the refresh
+            restoreExpanded();
 
         } catch (err) {
             console.error('fetchAllData error:', err);

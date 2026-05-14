@@ -52,15 +52,16 @@ Available at `http://127.0.0.1:5000/scanner`:
 ### 1. Install the extension
 Search for **Cloud API Key Watchdog** in the VS Code Extensions panel and click Install.
 
-### 2. Start the dashboard (optional)
-```bash
-cd dashboard-server
-pip install -r requirements.txt
-python app.py
-```
-Then open `http://127.0.0.1:5000` in your browser.
+### 2. Open the dashboard (no setup needed)
 
-The extension works without the dashboard — it will still block saves and show detection details. The dashboard just adds logging and monitoring.
+The dashboard is hosted in the cloud — just open:
+```
+https://cloud-api-key-watchdog-production.up.railway.app
+```
+
+Your dashboard link is personalised with your machine ID automatically — the status bar button and Output panel both show your direct link.
+
+> **Self-hosting:** If you prefer to run the dashboard locally, clone the repo, `cd dashboard-server`, run `pip install -r requirements.txt && python app.py`, and set `apiKeyWatchdog.dashboardUrl` to `http://127.0.0.1:5000` in VS Code settings.
 
 ---
 

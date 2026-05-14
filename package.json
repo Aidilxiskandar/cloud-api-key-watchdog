@@ -2,7 +2,7 @@
   "name": "cloud-api-key-watchdog",
   "displayName": "Cloud API Key Watchdog",
   "description": "Prevents accidental exposure of API keys by blocking saves when secrets are detected",
-  "version": "1.0.0",
+  "version": "1.1.3",
   "publisher": "AidilxIskandar",
   "repository": {
     "type": "git",
@@ -54,7 +54,7 @@
         },
         "apiKeyWatchdog.dashboardUrl": {
           "type": "string",
-          "default": "http://127.0.0.1:5000",
+          "default": "https://cloud-api-key-watchdog-production.up.railway.app",
           "description": "URL of the monitoring dashboard server"
         }
       }
