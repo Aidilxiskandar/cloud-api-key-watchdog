@@ -1,4 +1,5 @@
 {
+	"apiKeyWatchdog.dashboardApiKey": "watchdog-2026-aidil-secret",
 	"files.exclude": {
 		"out": false,
 		"dist": false
