@@ -552,17 +552,43 @@
         return html;
     }
 
+    function _findingSeverity(detectionMethod) {
+        const m = (detectionMethod || '').replace('Regex (','').replace(')','');
+        if (_SEV_HIGH.has(m))                                    return 'High';
+        if (_SEV_MEDIUM.has(m))                                  return 'Medium';
+        if (m === 'High Entropy Detection' || m === 'High Entropy') return 'Entropy';
+        if (_SEV_LOW.has(m))                                     return 'Low';
+        return 'Medium';
+    }
+
+    const _SEV_BADGE_STYLE = {
+        High:    'background:#3d0c0c;color:#f85149;border:1px solid #f8514944;',
+        Medium:  'background:#3d2b00;color:#e3b341;border:1px solid #e3b34144;',
+        Low:     'background:#1f3a5f;color:#388bfd;border:1px solid #1f6feb44;',
+        Entropy: 'background:#2d1f4e;color:#a371f7;border:1px solid #a371f744;',
+    };
+
     function renderFindings(d, idx) {
         const findings = d.findings;
         if (!findings || findings.length === 0) {
             return `<div class="finding-item"><span class="finding-key">${escapeHtml(d.detected_key || 'N/A')}</span></div>`;
         }
         const PREVIEW = 3;
-        const renderItem = f => `
+        const renderItem = f => {
+            const method = (f.detectionMethod || '').replace('Regex (','').replace(')','');
+            const s      = _findingSeverity(f.detectionMethod);
+            const style  = _SEV_BADGE_STYLE[s] || '';
+            return `
             <div class="finding-item">
-                <div class="finding-loc">Line ${f.line}, Col ${f.column}</div>
+                <div class="finding-loc" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">
+                    <span>Line ${f.line}, Col ${f.column}</span>
+                    <span style="color:var(--muted);">·</span>
+                    <span style="font-size:11px;color:var(--muted);">${escapeHtml(method)}</span>
+                    <span class="badge" style="${style}padding:1px 7px;font-size:10px;">${s}</span>
+                </div>
                 <span class="finding-key">"${escapeHtml((f.matchedText||'').substring(0,70))}${(f.matchedText||'').length>70?'…':''}"</span>
             </div>`;
+        };
         const visible = findings.slice(0, PREVIEW).map(renderItem).join('');
         if (findings.length <= PREVIEW) return `<div>${visible}</div>`;
         const hidden = findings.slice(PREVIEW).map(renderItem).join('');
