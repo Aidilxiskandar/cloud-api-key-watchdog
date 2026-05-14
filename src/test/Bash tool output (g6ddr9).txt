@@ -1,0 +1,89 @@
+======================================
+ TEST 1: XSS Injection
+======================================
+{"error":"Unauthorized \u2014 invalid or missing X-API-Key"}
+
+Status: 401
+======================================
+ TEST 2: SQL Injection
+======================================
+{"error":"Unauthorized \u2014 invalid or missing X-API-Key"}
+
+Status: 401
+======================================
+ TEST 3: Empty payload
+======================================
+{"error":"Unauthorized \u2014 invalid or missing X-API-Key"}
+
+Status: 401
+======================================
+ TEST 4: Missing required fields
+======================================
+{"error":"Unauthorized \u2014 invalid or missing X-API-Key"}
+
+Status: 401
+======================================
+ TEST 5: No Content-Type header
+======================================
+{"error":"Unauthorized \u2014 invalid or missing X-API-Key"}
+
+Status: 401
+======================================
+ TEST 6: GET on POST-only endpoint
+======================================
+<!doctype html>
+<html lang=en>
+<title>405 Method Not Allowed</title>
+<h1>Method Not Allowed</h1>
+<p>The method is not allowed for the requested URL.</p>
+
+Status: 405
+======================================
+ TEST 7: Path traversal
+======================================
+<!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>
+
+Status: 404
+======================================
+ TEST 8: Sensitive routes
+======================================
+/admin -> <!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>
+Status: 404
+/.env  -> <!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.</p>
+Status: 404
+======================================
+ TEST 9: Open read /api/detections
+======================================
+[]
+
+Status: 200
+======================================
+ TEST 10: Oversized payload (10KB)
+======================================
+{"error":"Unauthorized \u2014 invalid or missing X-API-Key"}
+
+Status: 401
+======================================
+ TEST 11: HTTP verb tampering
+======================================
+PUT    -> Status: 405
+DELETE -> Status: 405
+PATCH  -> Status: 405
+======================================
+ TEST 12: CRITICAL — /api/clear without auth
+======================================
+{"error":"Unauthorized \u2014 invalid or missing X-API-Key"}
+
+Status: 401

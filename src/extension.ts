@@ -260,13 +260,14 @@ function shouldSkipFile(filePath: string): boolean {
 async function logToDashboard(payload: LogPayload): Promise<void> {
     const config = vscode.workspace.getConfiguration('apiKeyWatchdog');
     const dashboardUrl = config.get<string>('dashboardUrl', 'http://127.0.0.1:5000');
+    const apiKey = config.get<string>('dashboardApiKey', '');
     const serverUrl = `${dashboardUrl}/api/log`;
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) { headers['X-API-Key'] = apiKey; }
+
     try {
-        await axios.post(serverUrl, payload, {
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 3000
-        });
+        await axios.post(serverUrl, payload, { headers, timeout: 3000 });
         outputChannel.appendLine(`[${payload.timestamp}] ✅ Logged to dashboard — ${payload.filename} (${payload.status})`);
     } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);

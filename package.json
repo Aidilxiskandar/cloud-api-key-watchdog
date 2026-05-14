@@ -56,6 +56,11 @@
           "type": "string",
           "default": "https://cloud-api-key-watchdog-production.up.railway.app",
           "description": "URL of the monitoring dashboard server"
+        },
+        "apiKeyWatchdog.dashboardApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the dashboard server (set WATCHDOG_API_KEY on Railway, paste the same value here)"
         }
       }
     },

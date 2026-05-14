@@ -1,0 +1,134 @@
+BASE="https://cloud-api-key-watchdog-production.up.railway.app"
+
+echo "======================================"
+echo " TEST 1: XSS Injection"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" -X POST "$BASE/api/log" \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"<script>alert(1)</script>","status":"BLOCKED"}'
+
+echo ""
+echo "======================================"
+echo " TEST 2: SQL Injection"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" -X POST "$BASE/api/log" \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"config.py\" OR 1=1 --","status":"BLOCKED"}'
+
+echo ""
+echo "======================================"
+echo " TEST 3: Empty payload"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" -X POST "$BASE/api/log" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+echo ""
+echo "======================================"
+echo " TEST 4: Missing required fields"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" -X POST "$BASE/api/log" \
+  -H "Content-Type: application/json" \
+  -d '{"detected_key":"AKIAIOSFODNN7EXAMPLE"}'
+
+echo ""
+echo "======================================"
+echo " TEST 5: No Content-Type header"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" -X POST "$BASE/api/log" \
+  -d '{"filename":"test.py","status":"BLOCKED"}'
+
+echo ""
+echo "======================================"
+echo " TEST 6: GET on POST-only endpoint"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" -X GET "$BASE/api/log"
+
+echo ""
+echo "======================================"
+echo " TEST 7: Path traversal"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" "$BASE/../etc/passwd"
+
+echo ""
+echo "======================================"
+echo " TEST 8: Sensitive routes"
+echo "======================================"
+echo -n "/admin -> "
+curl.exe -s -w "Status: %{http_code}" "$BASE/admin"
+echo ""
+echo -n "/.env  -> "
+curl.exe -s -w "Status: %{http_code}" "$BASE/.env"
+
+echo ""
+echo "======================================"
+echo " TEST 9: Open read /api/detections"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" "$BASE/api/detections" | head -c 150
+
+echo ""
+echo "======================================"
+echo " TEST 10: Oversized payload (10KB)"
+echo "======================================"
+python3 -c "import json,sys; sys.stdout.write(json.dumps({'filename':'A'*10000,'status':'BLOCKED'}))" | curl.exe -s -w "\nStatus: %{http_code}" -X POST "$BASE/api/log" -H "Content-Type: application/json" -d @-
+
+echo ""
+echo "======================================"
+echo " TEST 11: HTTP verb tampering"
+echo "======================================"
+echo -n "PUT    -> Status: "; curl.exe -s -o /dev/null -w "%{http_code}" -X PUT "$BASE/api/log" -H "Content-Type: application/json" -d '{}'
+echo ""
+echo -n "DELETE -> Status: "; curl.exe -s -o /dev/null -w "%{http_code}" -X DELETE "$BASE/api/log"
+echo ""
+echo -n "PATCH  -> Status: "; curl.exe -s -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/log"
+
+echo ""
+echo "======================================"
+echo " TEST 12: CRITICAL — /api/clear without auth"
+echo "======================================"
+curl.exe -s -w "\nStatus: %{http_code}" -X POST "$BASE/api/clear"
+
+
+$BASE = "https://cloud-api-key-watchdog-production.up.railway.app"
+
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "   API SECURITY TEST REPORT" -ForegroundColor Cyan
+Write-Host "   Cloud API Key Watchdog" -ForegroundColor Cyan
+Write-Host "========================================`n" -ForegroundColor Cyan
+
+function Test-API($label, $method, $uri, $body, $headers) {
+    Write-Host ">> $label" -ForegroundColor Yellow -NoNewline
+    try {
+        $params = @{ Uri=$uri; Method=$method; UseBasicParsing=$true }
+        if ($body)    { $params.Body = $body }
+        if ($headers) { $params.Headers = $headers }
+        if ($body)    { $params.ContentType = "application/json" }
+        $r = Invoke-WebRequest @params -ErrorAction Stop
+        $code = $r.StatusCode
+    } catch { $code = $_.Exception.Response.StatusCode.value__ }
+
+    if ($code -eq 200 -and $label -match "XSS|Injection|Clear|Oversize") {
+        Write-Host "  ->  $code  VULNERABLE" -ForegroundColor Red
+    } elseif ($code -in 401,403,400,404,405,413) {
+        Write-Host "  ->  $code  PROTECTED" -ForegroundColor Green
+    } else {
+        Write-Host "  ->  $code" -ForegroundColor Gray
+    }
+}
+
+Test-API "T01  XSS Injection"            POST "$BASE/api/log" '{"filename":"<script>alert(1)</script>","status":"BLOCKED"}' $null
+Test-API "T02  SQL Injection"            POST "$BASE/api/log" '{"filename":"\" OR 1=1 --","status":"BLOCKED"}' $null
+Test-API "T03  Empty payload"            POST "$BASE/api/log" '{}' $null
+Test-API "T04  Missing required fields"  POST "$BASE/api/log" '{"detected_key":"AKIAIOSFODNN7EXAMPLE"}' $null
+Test-API "T05  No Content-Type"          POST "$BASE/api/log" $null $null
+Test-API "T06  GET on POST endpoint"     GET  "$BASE/api/log" $null $null
+Test-API "T07  Path traversal"           GET  "$BASE/../etc/passwd" $null $null
+Test-API "T08  /admin route"             GET  "$BASE/admin" $null $null
+Test-API "T09  /.env exposed"            GET  "$BASE/.env" $null $null
+Test-API "T10  PUT verb tampering"       PUT  "$BASE/api/log" '{}' $null
+Test-API "T11  DELETE verb tampering"    DELETE "$BASE/api/log" $null $null
+Test-API "T12  Clear logs without auth"  POST "$BASE/api/clear" $null $null
+
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "   ALL TESTS COMPLETE" -ForegroundColor Cyan
+Write-Host "========================================`n" -ForegroundColor Cyan
