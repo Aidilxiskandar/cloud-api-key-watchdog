@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Scanner — Watchdog</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg:       #0d1117;
+            --surface:  #161b22;
+            --surface2: #1c2128;
+            --border:   #30363d;
+            --border2:  #21262d;
+            --text:     #e6edf3;
+            --muted:    #8b949e;
+            --blue:     #388bfd;
+            --purple:   #a371f7;
+            --red:      #f85149;
+            --orange:   #e3b341;
+            --green:    #3fb950;
+            --mono:     'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            height: 58px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 28px;
+        }
+        .topbar-brand { display: flex; align-items: center; gap: 10px; }
+        .brand-icon {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, #388bfd 0%, #a371f7 100%);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px;
+        }
+        .brand-name { font-size: 15px; font-weight: 600; }
+        .brand-sub  { font-size: 11px; color: var(--muted); }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 6px 14px; border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            transition: all .15s;
+            background: var(--surface2); color: var(--text);
+            text-decoration: none;
+        }
+        .btn:hover { background: var(--border); border-color: var(--muted); }
+        .btn-primary {
+            background: var(--blue); color: #fff;
+            border-color: var(--blue); font-size: 13px; padding: 9px 22px;
+        }
+        .btn-primary:hover { background: #1a7ef7; border-color: #1a7ef7; }
+        .btn-primary:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+
+        /* ── Page ── */
+        .page { max-width: 1200px; margin: 0 auto; padding: 32px 28px; }
+
+        /* ── Input card ── */
+        .input-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 28px;
+            margin-bottom: 24px;
+        }
+        .input-card h2 {
+            font-size: 18px; font-weight: 700; margin-bottom: 4px;
+        }
+        .input-card p {
+            color: var(--muted); font-size: 13px; margin-bottom: 24px;
+        }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex; gap: 0;
+            border: 1px solid var(--border); border-radius: 8px;
+            overflow: hidden; width: fit-content; margin-bottom: 20px;
+        }
+        .tab {
+            padding: 8px 20px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: none;
+            background: var(--surface2); color: var(--muted); transition: all .15s;
+        }
+        .tab.active { background: var(--blue); color: #fff; }
+        .tab:not(.active):hover { background: var(--border); color: var(--text); }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* ── URL input ── */
+        .url-row { display: flex; gap: 10px; }
+        input[type="text"] {
+            flex: 1; padding: 10px 14px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text); font-size: 13px;
+            font-family: var(--mono); transition: border-color .15s;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--blue); }
+        input[type="text"]::placeholder { color: var(--muted); }
+        .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+        /* ── Drop zone ── */
+        .dropzone {
+            border: 2px dashed var(--border); border-radius: 8px;
+            padding: 40px 20px; text-align: center; cursor: pointer;
+            transition: all .2s; position: relative;
+        }
+        .dropzone:hover, .dropzone.drag-over {
+            border-color: var(--blue); background: rgba(56,139,253,.06);
+        }
+        .dropzone input[type="file"] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer;
+        }
+        .dropzone-icon { font-size: 32px; margin-bottom: 10px; }
+        .dropzone-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .dropzone-sub { font-size: 12px; color: var(--muted); }
+        .file-list { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .file-chip {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 4px; padding: 3px 10px;
+            font-size: 12px; font-family: var(--mono);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .file-chip button {
+            background: none; border: none; color: var(--muted);
+            cursor: pointer; font-size: 14px; padding: 0; line-height: 1;
+        }
+        .file-chip button:hover { color: var(--red); }
+        .upload-action { margin-top: 16px; text-align: right; }
+
+        /* ── Progress ── */
+        .progress-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 24px; margin-bottom: 24px;
+            display: none;
+        }
+        .progress-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+        }
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2px solid var(--border2);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-title { font-weight: 600; font-size: 14px; }
+        .progress-bar-wrap {
+            height: 4px; background: var(--border2);
+            border-radius: 2px; overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--blue), var(--purple));
+            transition: width .5s ease;
+        }
+        .progress-sub { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+        /* ── Error ── */
+        .alert-err {
+            background: #3d0c0c; border: 1px solid #f8514944;
+            color: var(--red); border-radius: 8px;
+            padding: 14px 18px; font-size: 13px;
+            margin-bottom: 24px; display: none;
+        }
+
+        /* ── Report section ── */
+        #report { display: none; }
+
+        .report-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+        }
+        .report-title { font-size: 18px; font-weight: 700; }
+        .report-meta { font-size: 12px; color: var(--muted); }
+
+        /* Stat cards — identical to dashboard */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px; margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px; padding: 18px 20px;
+            position: relative; overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: var(--ac);
+        }
+        .stat-card[data-accent="blue"]   { --ac: var(--blue);   }
+        .stat-card[data-accent="red"]    { --ac: var(--red);    }
+        .stat-card[data-accent="orange"] { --ac: var(--orange); }
+        .stat-card[data-accent="green"]  { --ac: var(--green);  }
+        .stat-label {
+            font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .6px;
+            color: var(--muted); margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 32px; font-weight: 700;
+            line-height: 1; font-variant-numeric: tabular-nums;
+        }
+        .stat-icon {
+            position: absolute; top: 16px; right: 16px;
+            font-size: 20px; opacity: .25;
+        }
+        .stat-card.clean .stat-value { color: var(--green); }
+        .stat-card.danger .stat-value { color: var(--red); }
+
+        /* Filter bar */
+        .filter-bar {
+            display: flex; gap: 10px; align-items: center;
+            margin-bottom: 14px; flex-wrap: wrap;
+        }
+        .filter-bar input {
+            flex: 1; min-width: 200px; padding: 8px 12px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text); font-size: 13px;
+        }
+        .filter-bar input:focus { outline: none; border-color: var(--blue); }
+        .filter-bar select {
+            padding: 8px 12px; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 6px;
+            color: var(--text); font-size: 13px; cursor: pointer;
+        }
+
+        /* Table — identical to dashboard */
+        .table-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; overflow: hidden;
+        }
+        .table-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 20px; border-bottom: 1px solid var(--border);
+        }
+        .table-head h3 { font-size: 14px; font-weight: 600; }
+        .table-head span { font-size: 12px; color: var(--muted); }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            padding: 10px 16px; text-align: left;
+            font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .5px;
+            color: var(--muted); background: var(--bg);
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        tbody tr { border-bottom: 1px solid var(--border2); transition: background .1s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: var(--surface2); }
+        tbody td { padding: 13px 16px; font-size: 13px; vertical-align: top; }
+
+        .td-file {
+            font-family: var(--mono); font-size: 11px; color: var(--blue);
+            word-break: break-all; max-width: 220px; display: block;
+        }
+        .td-loc {
+            font-family: var(--mono); font-size: 12px;
+            color: var(--muted); white-space: nowrap;
+        }
+        .td-key {
+            font-family: var(--mono); font-size: 11px; color: var(--text);
+            background: var(--bg); border: 1px solid var(--border);
+            padding: 2px 6px; border-radius: 3px;
+            word-break: break-all; display: block; max-width: 300px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex; align-items: center;
+            padding: 3px 9px; border-radius: 4px;
+            font-size: 11px; font-weight: 600;
+            border: 1px solid; white-space: nowrap;
+        }
+        .badge-high    { background: #3d0c0c; color: var(--red);    border-color: #f8514944; }
+        .badge-medium  { background: #3d2b00; color: var(--orange); border-color: #e3b34144; }
+        .badge-low     { background: #1f3a5f; color: var(--blue);   border-color: #1f6feb44; }
+        .badge-entropy { background: #2d1f4e; color: var(--purple); border-color: #a371f744; }
+
+        .method-tag {
+            display: inline-flex; align-items: center;
+            background: var(--surface2); border: 1px solid var(--border);
+            padding: 2px 8px; border-radius: 4px;
+            font-size: 11px; color: var(--muted);
+        }
+
+        /* Empty state */
+        .state-row td {
+            text-align: center; padding: 52px 20px; color: var(--muted);
+        }
+        .state-icon { font-size: 32px; margin-bottom: 12px; }
+        .state-msg  { font-size: 14px; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 540px) {
+            .topbar, .page { padding-left: 16px; padding-right: 16px; }
+            .url-row { flex-direction: column; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+    <div class="topbar-brand">
+        <div class="brand-icon">🔍</div>
+        <div>
+            <div class="brand-name">API Key Scanner</div>
+            <div class="brand-sub">Manual repository scan</div>
+        </div>
+    </div>
+    <a href="/" class="btn" style="text-decoration:none;">← Dashboard</a>
+</header>
+
+<div class="page">
+
+    <!-- Input card -->
+    <div class="input-card">
+        <h2>Scan for Exposed API Keys</h2>
+        <p>Enter a public GitHub URL or upload files — secrets, tokens, and high-entropy strings will be reported below.</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('github')">🔗 GitHub URL</button>
+            <button class="tab"        onclick="switchTab('upload')">📁 File Upload</button>
+        </div>
+
+        <!-- GitHub panel -->
+        <div class="panel active" id="panel-github">
+            <div class="url-row">
+                <input type="text" id="githubUrl"
+                    placeholder="https://github.com/owner/repo"
+                    onkeydown="if(event.key==='Enter') doScan()">
+                <button class="btn btn-primary" id="scanBtn" onclick="doScan()">
+                    Scan Repository
+                </button>
+            </div>
+            <p class="hint">Public repos only. Up to 200 scannable files fetched concurrently.</p>
+        </div>
+
+        <!-- Upload panel -->
+        <div class="panel" id="panel-upload">
+            <div class="dropzone" id="dropzone"
+                ondragover="onDragOver(event)" ondragleave="onDragLeave()"
+                ondrop="onDrop(event)">
+                <input type="file" id="fileInput" multiple onchange="onFileChange(event)">
+                <div class="dropzone-icon">📂</div>
+                <div class="dropzone-title">Drag & drop files here</div>
+                <div class="dropzone-sub">or click to browse — supports any text file or .zip archive</div>
+                <div class="file-list" id="fileList"></div>
+            </div>
+            <div class="upload-action">
+                <button class="btn btn-primary" id="uploadBtn" onclick="doUpload()" disabled>
+                    Scan Files
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-card" id="progressCard">
+        <div class="progress-header">
+            <div class="spinner"></div>
+            <div class="progress-title" id="progressTitle">Scanning…</div>
+        </div>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-sub" id="progressSub">This may take up to a minute for large repositories.</div>
+    </div>
+
+    <!-- Error -->
+    <div class="alert-err" id="errorBox"></div>
+
+    <!-- ══ REPORT ══ -->
+    <div id="report">
+
+        <div class="report-header">
+            <div>
+                <div class="report-title">Scan Report</div>
+                <div class="report-meta" id="reportMeta"></div>
+            </div>
+            <button class="btn" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+
+        <!-- Stat cards -->
+        <div class="stats-row">
+            <div class="stat-card" data-accent="blue">
+                <div class="stat-icon">📁</div>
+                <div class="stat-label">Files Scanned</div>
+                <div class="stat-value" id="sc-files">—</div>
+            </div>
+            <div class="stat-card" data-accent="red" id="sc-card-findings">
+                <div class="stat-icon">🔍</div>
+                <div class="stat-label">Total Findings</div>
+                <div class="stat-value" id="sc-findings">—</div>
+            </div>
+            <div class="stat-card" data-accent="orange" id="sc-card-high">
+                <div class="stat-icon">⚠</div>
+                <div class="stat-label">High Severity</div>
+                <div class="stat-value" id="sc-high">—</div>
+            </div>
+            <div class="stat-card" data-accent="green" id="sc-card-methods">
+                <div class="stat-icon">🛡</div>
+                <div class="stat-label">Methods Found</div>
+                <div class="stat-value" id="sc-methods">—</div>
+            </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <input type="text" id="filterText"
+                placeholder="🔍  Filter by file name, detection type, or matched text…"
+                oninput="renderTable()">
+            <select id="filterMethod" onchange="renderTable()">
+                <option value="">All detection types</option>
+            </select>
+            <select id="filterSev" onchange="renderTable()">
+                <option value="">All severities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
+
+        <!-- Findings table -->
+        <div class="table-card">
+            <div class="table-head">
+                <h3>Findings <span id="findingCount"></span></h3>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Location</th>
+                            <th>Detection Type</th>
+                            <th>Severity</th>
+                            <th>Entropy</th>
+                            <th>Matched Text</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div><!-- /report -->
+
+</div><!-- /page -->
+
+<script>
+    /* ─────────────── state ─────────────── */
+    let _findings  = [];
+    let _tab       = 'github';
+    let _files     = [];
+
+    /* ─────────────── tabs ─────────────── */
+    function switchTab(t) {
+        _tab = t;
+        document.querySelectorAll('.tab').forEach((el, i) =>
+            el.classList.toggle('active', t === 'github' ? i === 0 : i === 1));
+        document.getElementById('panel-github').classList.toggle('active', t === 'github');
+        document.getElementById('panel-upload').classList.toggle('active', t === 'upload');
+    }
+
+    /* ─────────────── file drop ─────────────── */
+    function onDragOver(e)  { e.preventDefault(); document.getElementById('dropzone').classList.add('drag-over'); }
+    function onDragLeave()  { document.getElementById('dropzone').classList.remove('drag-over'); }
+    function onDrop(e)      { e.preventDefault(); onDragLeave(); addFiles(e.dataTransfer.files); }
+    function onFileChange(e){ addFiles(e.target.files); }
+
+    function addFiles(list) {
+        for (const f of list)
+            if (!_files.find(x => x.name === f.name && x.size === f.size))
+                _files.push(f);
+        renderFileList();
+    }
+    function removeFile(i)  { _files.splice(i, 1); renderFileList(); }
+    function renderFileList() {
+        document.getElementById('fileList').innerHTML =
+            _files.map((f, i) => `<div class="file-chip">${esc(f.name)}
+                <button onclick="removeFile(${i})">✕</button></div>`).join('');
+        document.getElementById('uploadBtn').disabled = !_files.length;
+    }
+
+    /* ─────────────── severity ─────────────── */
+    const HIGH   = new Set(['AWS Access Key','AWS Secret Key','GitHub Token','Private Key','Stripe Key','Slack Token']);
+    const LOW    = new Set(['Generic API Key']);
+    function sev(m) {
+        if (m === 'High Entropy') return 'Entropy';
+        if (HIGH.has(m)) return 'High';
+        if (LOW.has(m))  return 'Low';
+        return 'Medium';
+    }
+    function sevBadge(s) {
+        const cls = s === 'High' ? 'badge-high'
+                  : s === 'Medium' ? 'badge-medium'
+                  : s === 'Entropy' ? 'badge-entropy'
+                  : 'badge-low';
+        return `<span class="badge ${cls}">${s}</span>`;
+    }
+
+    /* ─────────────── progress ─────────────── */
+    let _progInterval = null, _msgInterval = null;
+    const MSGS = [
+        'Fetching file tree…',
+        'Downloading files concurrently…',
+        'Running detection patterns…',
+        'Checking for high-entropy strings…',
+        'Compiling results…'
+    ];
+    function startProgress() {
+        const card = document.getElementById('progressCard');
+        const bar  = document.getElementById('progressBar');
+        const sub  = document.getElementById('progressSub');
+        card.style.display = 'block';
+        bar.style.width = '0%';
+        let pct = 0, mi = 0;
+        _progInterval = setInterval(() => {
+            pct = Math.min(pct + 0.5, 88);
+            bar.style.width = pct + '%';
+        }, 500);
+        _msgInterval = setInterval(() => {
+            document.getElementById('progressTitle').textContent = MSGS[mi++ % MSGS.length];
+        }, 4000);
+        document.getElementById('progressTitle').textContent = MSGS[0];
+        sub.textContent = 'This may take up to a minute for large repositories.';
+    }
+    function stopProgress() {
+        clearInterval(_progInterval);
+        clearInterval(_msgInterval);
+        const bar = document.getElementById('progressBar');
+        bar.style.width = '100%';
+        setTimeout(() => { document.getElementById('progressCard').style.display = 'none'; }, 400);
+    }
+
+    function setBtnState(on) {
+        const id  = _tab === 'github' ? 'scanBtn' : 'uploadBtn';
+        const btn = document.getElementById(id);
+        btn.disabled    = on;
+        btn.textContent = on ? 'Scanning…' : (_tab === 'github' ? 'Scan Repository' : 'Scan Files');
+    }
+
+    /* ─────────────── scan: github ─────────────── */
+    async function doScan() {
+        const url = document.getElementById('githubUrl').value.trim();
+        if (!url) { document.getElementById('githubUrl').focus(); return; }
+        reset();
+        setBtnState(true);
+        startProgress();
+        try {
+            const resp = await fetch('/api/scan/github', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const raw = await resp.text();
+            stopProgress();
+            let data;
+            try { data = JSON.parse(raw); } catch {
+                showError('Server returned an unexpected response — check the Flask terminal for details.');
+                return;
+            }
+            console.log('[scanner] response:', data);
+            if (!resp.ok) { showError(data.error || `Server error ${resp.status}`); return; }
+            showReport(data.findings, {
+                label: `${data.repo}  ·  branch: ${data.branch}`,
+                files: data.files_scanned,
+                truncated: data.truncated
+            });
+        } catch (e) {
+            stopProgress();
+            console.error('[scanner]', e);
+            showError('Network error — make sure Flask is running.');
+        } finally { setBtnState(false); }
+    }
+
+    /* ─────────────── scan: upload ─────────────── */
+    async function doUpload() {
+        if (!_files.length) return;
+        reset();
+        setBtnState(true);
+        startProgress();
+        const fd = new FormData();
+        _files.forEach(f => fd.append('files', f));
+        try {
+            const resp = await fetch('/api/scan/upload', { method: 'POST', body: fd });
+            const raw  = await resp.text();
+            stopProgress();
+            let data;
+            try { data = JSON.parse(raw); } catch {
+                showError('Server returned an unexpected response — check the Flask terminal for details.');
+                return;
+            }
+            console.log('[scanner] response:', data);
+            if (!resp.ok) { showError(data.error || `Server error ${resp.status}`); return; }
+            showReport(data.findings, {
+                label: `${_files.length} file(s) uploaded`,
+                files: data.files_scanned
+            });
+        } catch (e) {
+            stopProgress();
+            console.error('[scanner]', e);
+            showError('Network error — make sure Flask is running.');
+        } finally { setBtnState(false); }
+    }
+
+    /* ─────────────── show report ─────────────── */
+    function reset() {
+        document.getElementById('report').style.display = 'none';
+        document.getElementById('errorBox').style.display = 'none';
+        _findings = [];
+    }
+
+    function showError(msg) {
+        const box = document.getElementById('errorBox');
+        box.textContent = '⚠  ' + msg;
+        box.style.display = 'block';
+    }
+
+    function showReport(findings, meta) {
+        _findings = findings || [];
+
+        /* meta line */
+        let metaStr = meta.label ? `Source: ${meta.label}  ·  ` : '';
+        metaStr += `${meta.files} file(s) scanned`;
+        if (meta.truncated) metaStr += '  ·  ⚠ Capped at 200 files';
+        document.getElementById('reportMeta').textContent = metaStr;
+
+        /* stat cards */
+        const high    = _findings.filter(f => sev(f.method) === 'High').length;
+        const methods = new Set(_findings.map(f => f.method)).size;
+        const clean   = _findings.length === 0;
+
+        document.getElementById('sc-files').textContent    = meta.files;
+        document.getElementById('sc-findings').textContent = _findings.length;
+        document.getElementById('sc-high').textContent     = high;
+        document.getElementById('sc-methods').textContent  = methods;
+
+        const cardFindings = document.getElementById('sc-card-findings');
+        const cardHigh     = document.getElementById('sc-card-high');
+        cardFindings.className = `stat-card ${clean ? 'clean' : 'danger'}`;
+        cardFindings.dataset.accent = clean ? 'green' : 'red';
+        cardHigh.className  = `stat-card ${high ? 'danger' : 'clean'}`;
+        cardHigh.dataset.accent = high ? 'orange' : 'green';
+
+        /* method filter */
+        const uniqueMethods = [...new Set(_findings.map(f => f.method))].sort();
+        const sel = document.getElementById('filterMethod');
+        sel.innerHTML = '<option value="">All detection types</option>'
+            + uniqueMethods.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+
+        /* show report, render table */
+        document.getElementById('report').style.display = 'block';
+        renderTable();
+
+        /* scroll into view after the DOM has updated */
+        setTimeout(() => {
+            document.getElementById('report').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    }
+
+    /* ─────────────── table ─────────────── */
+    function renderTable() {
+        const txt    = document.getElementById('filterText').value.toLowerCase();
+        const method = document.getElementById('filterMethod').value;
+        const sevFil = document.getElementById('filterSev').value;
+
+        const filtered = _findings.filter(f => {
+            const s = sev(f.method);
+            if (method && f.method !== method) return false;
+            if (sevFil && s !== sevFil) return false;
+            if (txt && !`${f.file} ${f.method} ${f.matched_text}`.toLowerCase().includes(txt)) return false;
+            return true;
+        });
+
+        document.getElementById('findingCount').textContent =
+            `— ${filtered.length}${filtered.length !== _findings.length ? ' of ' + _findings.length : ''}`;
+
+        const tbody = document.getElementById('resultsBody');
+
+        if (!_findings.length) {
+            tbody.innerHTML = `<tr class="state-row"><td colspan="6">
+                <div class="state-icon">✅</div>
+                <div class="state-msg">No secrets detected — this repository looks clean!</div>
+            </td></tr>`;
+            return;
+        }
+
+        if (!filtered.length) {
+            tbody.innerHTML = `<tr class="state-row"><td colspan="6">
+                <div class="state-icon">🔍</div>
+                <div class="state-msg">No findings match the current filter.</div>
+            </td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(f => {
+            const s = sev(f.method);
+            return `<tr>
+                <td><span class="td-file">${esc(f.file)}</span></td>
+                <td class="td-loc">L${f.line} · C${f.column}</td>
+                <td><span class="method-tag">${esc(f.method)}</span></td>
+                <td>${sevBadge(s)}</td>
+                <td style="font-family:var(--mono);font-size:12px;color:var(--muted);">${(f.entropy||0).toFixed(2)}</td>
+                <td><span class="td-key">${esc(f.matched_text)}</span></td>
+            </tr>`;
+        }).join('');
+    }
+
+    /* ─────────────── export ─────────────── */
+    function exportCSV() {
+        if (!_findings.length) return;
+        const rows = [['File','Line','Column','Detection Type','Severity','Entropy','Matched Text']];
+        _findings.forEach(f => rows.push([
+            f.file, f.line, f.column, f.method, sev(f.method), f.entropy, f.matched_text
+        ]));
+        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const a   = document.createElement('a');
+        a.href    = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = `watchdog-scan-${Date.now()}.csv`;
+        a.click();
+    }
+
+    /* ─────────────── util ─────────────── */
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+</body>
+</html>

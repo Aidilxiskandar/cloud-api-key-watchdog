@@ -1,0 +1,17 @@
+.vscode/**
+.vscode-test.mjs
+.gitignore
+node_modules/**
+src/**
+out/**
+tsconfig.json
+webpack.config.js
+eslint.config.mjs
+vsc-extension-quickstart.md
+**/*.vsix
+dashboard-server/**
+docs/**
+trufflehog.exe
+test-secrets.js
+bandit-report.json
+.claude/**

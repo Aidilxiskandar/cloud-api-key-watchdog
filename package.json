@@ -1,0 +1,110 @@
+{
+  "name": "cloud-api-key-watchdog",
+  "displayName": "Cloud API Key Watchdog",
+  "description": "Prevents accidental exposure of API keys by blocking saves when secrets are detected",
+  "version": "1.0.0",
+  "publisher": "AidilxIskandar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AidilxIskandar/cloud-api-key-watchdog"
+  },
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
+    "onLanguage:python",
+    "onLanguage:json",
+    "onLanguage:yaml",
+    "onLanguage:xml",
+    "onLanguage:markdown",
+    "onLanguage:plaintext"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "apiKeyWatchdog.scanCurrentFile",
+        "title": "API Key Watchdog: Scan Current File for Secrets"
+      },
+      {
+        "command": "apiKeyWatchdog.openDashboard",
+        "title": "API Key Watchdog: Open Dashboard"
+      }
+    ],
+    "configuration": {
+      "title": "API Key Watchdog",
+      "properties": {
+        "apiKeyWatchdog.enableEntropyDetection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable entropy-based detection for unstructured secrets"
+        },
+        "apiKeyWatchdog.entropyThreshold": {
+          "type": "number",
+          "default": 4.5,
+          "description": "Threshold for entropy-based detection"
+        },
+        "apiKeyWatchdog.dashboardUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:5000",
+          "description": "URL of the monitoring dashboard server"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "apiKeyWatchdog.scanCurrentFile",
+        "key": "ctrl+shift+s",
+        "mac": "cmd+shift+s",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "apiKeyWatchdog.scanCurrentFile",
+          "group": "navigation",
+          "when": "editorTextFocus"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "dependencies": {
+    "axios": "^1.13.6"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^16.18.126",
+    "@types/vscode": "^1.110.0",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^8.57.1",
+    "mocha": "^11.3.0",
+    "serialize-javascript": "^7.0.4",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "webpack": "^5.105.4",
+    "webpack-cli": "^5.1.4"
+  }
+}

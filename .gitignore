@@ -1,0 +1,31 @@
+# Extension build output
+out/
+dist/
+*.vsix
+
+# Dependencies
+node_modules/
+
+# Python
+dashboard-server/venv/
+dashboard-server/__pycache__/
+dashboard-server/*.pyc
+__pycache__/
+
+# Data — don't commit real detection logs
+dashboard-server/detections.json
+
+# Security tools — binaries don't belong in git
+trufflehog.exe
+bandit-report.json
+
+# VS Code test runner
+.vscode-test/
+.vscode-test.mjs
+
+# Claude memory
+.claude/
+
+# Misc
+.DS_Store
+*.log
