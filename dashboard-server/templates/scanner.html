@@ -509,12 +509,14 @@
     }
 
     /* ─────────────── severity ─────────────── */
-    const HIGH   = new Set(['AWS Access Key','AWS Secret Key','GitHub Token','Private Key','Stripe Key','Slack Token']);
-    const LOW    = new Set(['Generic API Key']);
-    function sev(m) {
-        if (m === 'High Entropy') return 'Entropy';
-        if (HIGH.has(m)) return 'High';
-        if (LOW.has(m))  return 'Low';
+    function sev(f) {
+        // Prefer server-provided severity, fall back to client-side mapping
+        if (f.severity) return f.severity;
+        const HIGH = new Set(['AWS Access Key','AWS Secret Key','GitHub Token','Private Key','Stripe Key','Slack Token']);
+        const LOW  = new Set(['Generic API Key']);
+        if (f.method === 'High Entropy') return 'Entropy';
+        if (HIGH.has(f.method)) return 'High';
+        if (LOW.has(f.method))  return 'Low';
         return 'Medium';
     }
     function sevBadge(s) {
@@ -653,7 +655,7 @@
         document.getElementById('reportMeta').textContent = metaStr;
 
         /* stat cards */
-        const high    = _findings.filter(f => sev(f.method) === 'High').length;
+        const high    = _findings.filter(f => sev(f) === 'High').length;
         const methods = new Set(_findings.map(f => f.method)).size;
         const clean   = _findings.length === 0;
 
@@ -692,7 +694,7 @@
         const sevFil = document.getElementById('filterSev').value;
 
         const filtered = _findings.filter(f => {
-            const s = sev(f.method);
+            const s = sev(f);
             if (method && f.method !== method) return false;
             if (sevFil && s !== sevFil) return false;
             if (txt && !`${f.file} ${f.method} ${f.matched_text}`.toLowerCase().includes(txt)) return false;
@@ -721,7 +723,7 @@
         }
 
         tbody.innerHTML = filtered.map(f => {
-            const s = sev(f.method);
+            const s = sev(f);
             return `<tr>
                 <td><span class="td-file">${esc(f.file)}</span></td>
                 <td class="td-loc">L${f.line} · C${f.column}</td>
@@ -738,7 +740,7 @@
         if (!_findings.length) return;
         const rows = [['File','Line','Column','Detection Type','Severity','Entropy','Matched Text']];
         _findings.forEach(f => rows.push([
-            f.file, f.line, f.column, f.method, sev(f.method), f.entropy, f.matched_text
+            f.file, f.line, f.column, f.method, sev(f), f.entropy, f.matched_text
         ]));
         const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
         const a   = document.createElement('a');

@@ -33,6 +33,20 @@ _SECRET_PATTERNS = [
     ('Stripe Key',          re.compile(r'(?:sk|pk)_(?:test|live)_[A-Za-z0-9]{24,}')),
 ]
 
+# Severity classification — mirrors scanner.html sev() function
+_SEVERITY = {
+    'AWS Access Key':      'High',
+    'AWS Secret Key':      'High',
+    'GitHub Token':        'High',
+    'Private Key':         'High',
+    'Stripe Key':          'High',
+    'Slack Token':         'High',
+    'Google API Key':      'Medium',
+    'Google OAuth Client': 'Medium',
+    'Generic API Key':     'Low',
+    'High Entropy':        'Entropy',
+}
+
 _FALSE_POSITIVES = [
     re.compile(r'^EXAMPLE_', re.I), re.compile(r'^SAMPLE_', re.I),
     re.compile(r'^TEST_',    re.I), re.compile(r'^MOCK_',   re.I),
@@ -40,14 +54,6 @@ _FALSE_POSITIVES = [
     re.compile(r'<YOUR_'),         re.compile(r'placeholder', re.I),
     re.compile(r'^\*+$'),          re.compile(r'^x+$', re.I),
 ]
-
-# Strings that look high-entropy but are not secrets
-_COMMON_ENTROPY_SKIP = re.compile(
-    r'(localhost|example\.com|placeholder|undefined|null|true|false'
-    r'|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-    r'|0123456789|sha\d|md5|base64|charset|utf-8|content-type)',
-    re.I
-)
 
 _TEXT_EXTENSIONS = {
     '.py','.js','.ts','.jsx','.tsx','.json','.yaml','.yml','.env',
@@ -72,12 +78,46 @@ def _entropy(s):
     for c in s: freq[c] = freq.get(c, 0) + 1
     return round(-sum((v/len(s))*math.log2(v/len(s)) for v in freq.values()), 2)
 
-# Matches quoted string literals: "...", '...', `...`
+def _is_common_string(s):
+    """Mirror of extension.ts isCommonString — filters entropy false positives."""
+    low = s.lower()
+    # Common safe keywords
+    safe = ['true','false','null','undefined','localhost','password','username',
+            'select','insert','update','delete','http://','https://','function',
+            'return','console.log','error','warning','info']
+    if any(k in low for k in safe):
+        return True
+    # Real secrets never contain spaces
+    if re.search(r'\s', s):
+        return True
+    # Python/JS template placeholders: {variable}, {obj.attr}, {val:^70}
+    if re.search(r'\{[A-Za-z_][^}]*\}', s):
+        return True
+    # strftime / date format codes
+    if re.search(r'%[YymdHMSfBbAaIpjZz]', s):
+        return True
+    # Terminal colour names
+    if re.search(r'\b(BOLD|CYAN|RED|GREEN|BLUE|YELLOW|RESET|END|UNDERLINE|Colors)\b', s, re.I):
+        return True
+    # Pure digits or pure alpha
+    if s.isalpha() or s.isdigit():
+        return True
+    # File path patterns
+    if re.match(r'^(\.{0,2}/|[A-Za-z]:\\)', s):
+        return True
+    # Mostly punctuation/brackets → code structure, not a secret
+    punct = len(re.findall(r'[^A-Za-z0-9]', s))
+    if len(s) > 0 and punct / len(s) > 0.4:
+        return True
+    return False
+
+# Matches quoted string literals for entropy scanning
 _STRING_LITERAL = re.compile(r'[\'"`]([^\'"` \t\r\n]{8,120})[\'"`]')
 _ENTROPY_THRESHOLD = 4.5
 
 def _scan_text(content, filename):
-    findings, seen = [], set()
+    raw_findings = []
+    seen = set()
     lines = content.splitlines()
 
     for ln, line in enumerate(lines, 1):
@@ -88,33 +128,48 @@ def _scan_text(content, filename):
                 if any(fp.search(text) for fp in _FALSE_POSITIVES):
                     continue
                 key = (ln, name, text)
-                if key in seen: continue
+                if key in seen:
+                    continue
                 seen.add(key)
-                findings.append({
+                raw_findings.append({
                     'file': filename, 'line': ln, 'column': m.start() + 1,
                     'method': name, 'matched_text': text[:120],
                     'entropy': _entropy(text),
+                    'severity': _SEVERITY.get(name, 'Medium'),
                 })
 
         # ── Entropy-based detection on string literals ──
         for m in _STRING_LITERAL.finditer(line):
             text = m.group(1)
-            # Skip if it looks like a common non-secret string
-            if _COMMON_ENTROPY_SKIP.search(text):
-                continue
-            # Skip pure alpha or pure digit strings — low information density
-            if text.isalpha() or text.isdigit():
+            if _is_common_string(text):
                 continue
             ent = _entropy(text)
             if ent >= _ENTROPY_THRESHOLD:
                 key = (ln, 'High Entropy', text)
-                if key in seen: continue
+                if key in seen:
+                    continue
                 seen.add(key)
-                findings.append({
+                raw_findings.append({
                     'file': filename, 'line': ln, 'column': m.start() + 1,
                     'method': 'High Entropy', 'matched_text': text[:120],
                     'entropy': ent,
+                    'severity': 'Entropy',
                 })
+
+    # ── Deduplication: drop Generic API Key if a specific pattern on the
+    #    same line already captured the actual key value inside it ──
+    findings = []
+    for i, f in enumerate(raw_findings):
+        if f['method'] == 'Generic API Key':
+            covered = any(
+                g['line'] == f['line'] and
+                g['method'] != 'Generic API Key' and
+                g['matched_text'] in f['matched_text']
+                for j, g in enumerate(raw_findings) if j != i
+            )
+            if covered:
+                continue
+        findings.append(f)
 
     return findings
 
