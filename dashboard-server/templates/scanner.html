@@ -463,9 +463,9 @@
             <div class="entropy-filter">
                 <label>Min Entropy</label>
                 <input type="range" id="filterEntropy"
-                    min="0" max="6" step="0.1" value="0"
+                    min="4.5" max="6" step="0.1" value="4.5"
                     oninput="updateEntropyLabel(); renderTable()">
-                <span class="entropy-val" id="entropyVal">0.0</span>
+                <span class="entropy-val" id="entropyVal">4.5</span>
             </div>
         </div>
 
@@ -725,7 +725,7 @@
             const s = sev(f);
             if (method && f.method !== method) return false;
             if (sevFil && s !== sevFil) return false;
-            if (minEnt > 0 && (f.entropy || 0) < minEnt) return false;
+            if (sev(f) === 'Entropy' && (f.entropy || 0) < minEnt) return false;
             if (txt && !`${f.file} ${f.method} ${f.matched_text}`.toLowerCase().includes(txt)) return false;
             return true;
         });
