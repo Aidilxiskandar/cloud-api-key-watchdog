@@ -345,7 +345,7 @@ def _fetch_and_scan(owner, repo, branch, path):
     """Fetch one raw file and return (path, findings). Used in thread pool."""
     url = f'https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}'
     try:
-        r = http_req.get(url, timeout=6)
+        r = http_req.get(url, timeout=4)
         if not r.ok:
             return path, []
         text = r.content.decode('utf-8', errors='replace')
@@ -407,13 +407,13 @@ def scan_github():
             return 0
         return 1
     blobs.sort(key=lambda i: _priority(i['path']))
-    blobs = blobs[:50]
+    blobs = blobs[:150]
 
     print(f'[scanner] fetching {len(blobs)} files concurrently…')
 
-    # Reduced to 5 workers to stay within Railway's memory limits
+    # 10 workers: fast enough to finish within timeout, light enough for Railway memory
     findings, scanned = [], []
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=10) as pool:
         futures = {
             pool.submit(_fetch_and_scan, owner, repo, branch, i['path']): i['path']
             for i in blobs
