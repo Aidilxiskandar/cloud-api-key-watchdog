@@ -234,16 +234,30 @@
             display: flex; gap: 10px; align-items: center;
             margin-bottom: 14px; flex-wrap: wrap;
         }
-        .filter-bar input {
+        .filter-bar input[type="text"] {
             flex: 1; min-width: 200px; padding: 8px 12px;
             background: var(--surface2); border: 1px solid var(--border);
             border-radius: 6px; color: var(--text); font-size: 13px;
         }
-        .filter-bar input:focus { outline: none; border-color: var(--blue); }
+        .filter-bar input[type="text"]:focus { outline: none; border-color: var(--blue); }
         .filter-bar select {
             padding: 8px 12px; background: var(--surface2);
             border: 1px solid var(--border); border-radius: 6px;
             color: var(--text); font-size: 13px; cursor: pointer;
+        }
+        .entropy-filter {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; padding: 6px 12px; white-space: nowrap;
+        }
+        .entropy-filter label { font-size: 12px; color: var(--muted); }
+        .entropy-filter input[type="range"] {
+            width: 90px; accent-color: var(--purple);
+            background: none; border: none; padding: 0; cursor: pointer;
+        }
+        .entropy-val {
+            font-size: 12px; font-family: var(--mono);
+            color: var(--purple); min-width: 28px; text-align: right;
         }
 
         /* Table — identical to dashboard */
@@ -444,7 +458,15 @@
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
+                <option value="Entropy">Entropy</option>
             </select>
+            <div class="entropy-filter">
+                <label>Min Entropy</label>
+                <input type="range" id="filterEntropy"
+                    min="0" max="6" step="0.1" value="0"
+                    oninput="updateEntropyLabel(); renderTable()">
+                <span class="entropy-val" id="entropyVal">0.0</span>
+            </div>
         </div>
 
         <!-- Findings table -->
@@ -688,15 +710,22 @@
     }
 
     /* ─────────────── table ─────────────── */
+    function updateEntropyLabel() {
+        const v = parseFloat(document.getElementById('filterEntropy').value);
+        document.getElementById('entropyVal').textContent = v.toFixed(1);
+    }
+
     function renderTable() {
-        const txt    = document.getElementById('filterText').value.toLowerCase();
-        const method = document.getElementById('filterMethod').value;
-        const sevFil = document.getElementById('filterSev').value;
+        const txt      = document.getElementById('filterText').value.toLowerCase();
+        const method   = document.getElementById('filterMethod').value;
+        const sevFil   = document.getElementById('filterSev').value;
+        const minEnt   = parseFloat(document.getElementById('filterEntropy').value);
 
         const filtered = _findings.filter(f => {
             const s = sev(f);
             if (method && f.method !== method) return false;
             if (sevFil && s !== sevFil) return false;
+            if (minEnt > 0 && (f.entropy || 0) < minEnt) return false;
             if (txt && !`${f.file} ${f.method} ${f.matched_text}`.toLowerCase().includes(txt)) return false;
             return true;
         });
