@@ -66,10 +66,14 @@ _TEXT_EXTENSIONS = {
 
 def _should_scan(path):
     name = os.path.basename(path).lower()
+    # Exact known secret filenames (no extension)
     if name in {'.env', 'credentials', 'secrets', '.netrc', '.npmrc',
                 '.pypirc', 'config', '.aws', 'terraform.tfvars'}:
         return True
+    # Extensionless files whose name suggests secrets
     _, ext = os.path.splitext(name)
+    if ext == '' and any(k in name for k in ('key', 'secret', 'token', 'cred', 'pass', 'auth', 'api')):
+        return True
     return ext in _TEXT_EXTENSIONS
 
 def _entropy(s):
