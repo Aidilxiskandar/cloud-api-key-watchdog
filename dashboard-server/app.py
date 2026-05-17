@@ -407,13 +407,13 @@ def scan_github():
             return 0
         return 1
     blobs.sort(key=lambda i: _priority(i['path']))
-    blobs = blobs[:200]
+    blobs = blobs[:100]
 
     print(f'[scanner] fetching {len(blobs)} files concurrently…')
 
-    # Fetch all files concurrently (20 workers)
+    # Reduced to 5 workers to stay within Railway's memory limits
     findings, scanned = [], []
-    with ThreadPoolExecutor(max_workers=20) as pool:
+    with ThreadPoolExecutor(max_workers=5) as pool:
         futures = {
             pool.submit(_fetch_and_scan, owner, repo, branch, i['path']): i['path']
             for i in blobs
