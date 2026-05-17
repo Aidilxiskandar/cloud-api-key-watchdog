@@ -407,7 +407,7 @@ def scan_github():
             return 0
         return 1
     blobs.sort(key=lambda i: _priority(i['path']))
-    blobs = blobs[:100]
+    blobs = blobs[:50]
 
     print(f'[scanner] fetching {len(blobs)} files concurrently…')
 
